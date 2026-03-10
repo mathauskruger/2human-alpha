@@ -43,6 +43,8 @@ if db is None:
 # ─────────────────────────────────────────
 if "username" not in st.session_state:
     st.session_state.username = None
+if "lang" not in st.session_state:
+    st.session_state.lang = None
 
 if st.session_state.username is None:
     # Centered welcome screen
@@ -52,17 +54,24 @@ if st.session_state.username is None:
         st.markdown("## 🧠 2Human")
         st.markdown("*A self-knowledge guide based on Schema Therapy*")
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("Before we begin — how should I call you?")
-        name = st.text_input("", placeholder="Your first name", label_visibility="collapsed")
+        st.markdown("Before we begin — how should I call you? / Como posso te chamar?")
+        name = st.text_input("", placeholder="Your first name / Seu nome", label_visibility="collapsed")
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Begin →", use_container_width=True):
+        st.markdown("Choose your language / Escolha o idioma:")
+        col_en, col_pt = st.columns(2)
+        with col_en:
+            btn_en = st.button("🇺🇸 English", use_container_width=True)
+        with col_pt:
+            btn_pt = st.button("🇧🇷 Português", use_container_width=True)
+        if btn_en or btn_pt:
             if name.strip():
                 st.session_state.username = name.strip()
+                st.session_state.lang = "en" if btn_en else "pt"
                 st.rerun()
             else:
-                st.warning("Please enter your name to continue.")
+                st.warning("Please enter your name first. / Por favor, insira seu nome primeiro.")
         st.markdown("<br><br>", unsafe_allow_html=True)
-        st.caption("2Human is a guide, not a therapist. This is an experimental alpha.")
+        st.caption("2Human is a guide, not a therapist. / 2Human é um guia, não um terapeuta.")
     st.stop()
 
 # ─────────────────────────────────────────
@@ -126,14 +135,25 @@ if "profile" not in st.session_state:
 
 if "messages" not in st.session_state:
     name = st.session_state.username
-    welcome = (
-        f"Hello, {name}! I'm the 2Human Mentor — a conversational guide based on Schema Therapy.\n\n"
-        "I'm not a therapist, and I don't diagnose. I'm an experimental tool designed to help "
-        "you explore emotional patterns through reflection and conversation.\n\n"
-        "As we talk, I'll quietly map your triggers, emotional responses, and recurring patterns. "
-        "When I notice something worth naming, I'll share it — and explain what I saved and why.\n\n"
-        "Tell me: how are you feeling right now, or what's been on your mind lately?"
-    )
+    lang = st.session_state.lang
+    if lang == "pt":
+        welcome = (
+            f"Olá, {name}! Sou o Mentor 2Human — um guia conversacional baseado na Terapia do Esquema.\n\n"
+            "Não sou terapeuta e não faço diagnósticos. Sou uma ferramenta experimental para te ajudar "
+            "a explorar seus padrões emocionais através da reflexão e da conversa.\n\n"
+            "Enquanto conversamos, vou mapeando seus gatilhos, respostas emocionais e padrões recorrentes. "
+            "Quando identificar algo relevante, vou compartilhar — e explicar o que salvei e por quê.\n\n"
+            "Me conta: como você está se sentindo agora, ou o que tem passado pela sua cabeça ultimamente?"
+        )
+    else:
+        welcome = (
+            f"Hello, {name}! I'm the 2Human Mentor — a conversational guide based on Schema Therapy.\n\n"
+            "I'm not a therapist, and I don't diagnose. I'm an experimental tool designed to help "
+            "you explore emotional patterns through reflection and conversation.\n\n"
+            "As we talk, I'll quietly map your triggers, emotional responses, and recurring patterns. "
+            "When I notice something worth naming, I'll share it — and explain what I saved and why.\n\n"
+            "Tell me: how are you feeling right now, or what's been on your mind lately?"
+        )
     st.session_state.messages = [{"role": "assistant", "content": welcome}]
 
 # ─────────────────────────────────────────
@@ -187,13 +207,14 @@ with st.sidebar:
 
     if st.button("🚪 Change user"):
         st.session_state.username = None
+        st.session_state.lang = None
         st.session_state.messages = []
         if "profile" in st.session_state:
             del st.session_state.profile
         st.rerun()
 
     st.markdown("---")
-    st.caption("2Human is a guide, not a therapist.")
+    st.caption("2Human is a guide, not a therapist." if st.session_state.get("lang") == "en" else "2Human é um guia, não um terapeuta.")
 
 # ─────────────────────────────────────────
 # RENDER CHAT HISTORY
@@ -204,7 +225,8 @@ for msg in st.session_state.messages:
 # ─────────────────────────────────────────
 # USER INPUT
 # ─────────────────────────────────────────
-if prompt := st.chat_input("How are you feeling right now?"):
+_placeholder = "How are you feeling right now?" if st.session_state.get("lang") == "en" else "Como você está se sentindo agora?"
+if prompt := st.chat_input(_placeholder):
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
 
@@ -228,12 +250,19 @@ if prompt := st.chat_input("How are you feeling right now?"):
     profile_context = format_profile_for_prompt(st.session_state.profile)
     user_msg_count = len([m for m in st.session_state.messages if m["role"] == "user"])
 
+    lang = st.session_state.get("lang", "en")
+    lang_instruction = (
+        "Always respond in Brazilian Portuguese, regardless of the language the user writes in."
+        if lang == "pt"
+        else "Always respond in English, regardless of the language the user writes in."
+    )
+
     system_prompt = f"""You are the 2Human Mentor — a conversational self-knowledge guide based on Schema Therapy (ST).
 
 IDENTITY:
 - You are a guide, NOT a therapist. Never diagnose, prescribe, or claim clinical certainty.
 - You are an experimental educational tool. Be transparent about this when relevant.
-- Always respond in English, regardless of the language the user writes in.
+- {lang_instruction}
 - The user's name is {st.session_state.username} — use it naturally and sparingly.
 
 USER PROFILE (persistent memory — never ignore):
@@ -317,7 +346,7 @@ Rules:
 4. Max 5 active schemas (highest intensity). Others get "dormant": true
 5. Never delete — mark dormant if inactive
 6. Update triggers, behavioral_patterns, and core_needs when identified
-7. Use English for all field values
+7. Use {"Portuguese" if lang == "pt" else "English"} for all field values
 
 Return ONLY the updated JSON. No extra text, no markdown, no backticks."""
 
