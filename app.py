@@ -10,8 +10,6 @@ from datetime import date
 # PAGE CONFIG
 # ─────────────────────────────────────────
 st.set_page_config(page_title="2Human Alpha", page_icon="🧠")
-st.title("🧠 2Human: Alpha Test")
-st.markdown("---")
 
 # ─────────────────────────────────────────
 # GEMINI CLIENT
@@ -40,18 +38,45 @@ if db is None:
     st.error("'schema_db' folder not found! Run create_vector_db.py first.")
     st.stop()
 
-st.sidebar.success("✅ Knowledge base loaded!")
+# ─────────────────────────────────────────
+# WELCOME SCREEN — name input
+# ─────────────────────────────────────────
+if "username" not in st.session_state:
+    st.session_state.username = None
+
+if st.session_state.username is None:
+    # Centered welcome screen
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("## 🧠 2Human")
+        st.markdown("*A self-knowledge guide based on Schema Therapy*")
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("Before we begin — how should I call you?")
+        name = st.text_input("", placeholder="Your first name", label_visibility="collapsed")
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Begin →", use_container_width=True):
+            if name.strip():
+                st.session_state.username = name.strip()
+                st.rerun()
+            else:
+                st.warning("Please enter your name to continue.")
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.caption("2Human is a guide, not a therapist. This is an experimental alpha.")
+    st.stop()
 
 # ─────────────────────────────────────────
-# EMOTIONAL MEMORY — user profile
+# PROFILE — per user JSON
 # ─────────────────────────────────────────
-PROFILE_FILE = os.path.join(BASE_DIR, "user_profile.json")
+safe_name = "".join(c for c in st.session_state.username.lower() if c.isalnum())
+PROFILE_FILE = os.path.join(BASE_DIR, f"user_profile_{safe_name}.json")
 
 def load_profile():
     if os.path.exists(PROFILE_FILE):
         with open(PROFILE_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return {
+        "name": st.session_state.username,
         "schemas_identified": [],
         "schema_candidates": [],
         "behavioral_patterns": [],
@@ -64,7 +89,6 @@ def save_profile(profile):
         json.dump(profile, f, ensure_ascii=False, indent=2)
 
 def format_profile_for_prompt(profile):
-    """Formats profile compactly for the system prompt."""
     lines = []
 
     active = [s for s in profile.get("schemas_identified", []) if not s.get("dormant", False)]
@@ -86,7 +110,7 @@ def format_profile_for_prompt(profile):
     if patterns:
         lines.append("Mapped patterns:")
         for p in patterns[:3]:
-            lines.append(f"  - Trigger '{p['trigger']}' → {p['emotion']} → {p['behavior']}")
+            lines.append(f"  - Trigger '{p['trigger']}' → {p['emotion']}' → {p['behavior']}")
 
     needs = ", ".join(profile.get("core_needs", [])) or "not identified yet"
     lines.append(f"Core needs: {needs}")
@@ -101,8 +125,9 @@ if "profile" not in st.session_state:
     save_profile(st.session_state.profile)
 
 if "messages" not in st.session_state:
+    name = st.session_state.username
     welcome = (
-        "Hello! I'm the 2Human Mentor — a conversational guide based on Schema Therapy.\n\n"
+        f"Hello, {name}! I'm the 2Human Mentor — a conversational guide based on Schema Therapy.\n\n"
         "I'm not a therapist, and I don't diagnose. I'm an experimental tool designed to help "
         "you explore emotional patterns through reflection and conversation.\n\n"
         "As we talk, I'll quietly map your triggers, emotional responses, and recurring patterns. "
@@ -112,10 +137,20 @@ if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": welcome}]
 
 # ─────────────────────────────────────────
-# SIDEBAR — live profile
+# MAIN UI
+# ─────────────────────────────────────────
+st.title("🧠 2Human: Alpha Test")
+st.markdown("---")
+
+# ─────────────────────────────────────────
+# SIDEBAR
 # ─────────────────────────────────────────
 with st.sidebar:
+    st.markdown(f"### 👤 {st.session_state.username}")
+    st.markdown("✅ Knowledge base loaded!")
+    st.markdown("---")
     st.markdown("### 🗂️ Your profile")
+
     active_schemas = [
         s for s in st.session_state.profile.get("schemas_identified", [])
         if not s.get("dormant", False)
@@ -134,6 +169,28 @@ with st.sidebar:
         for c in candidates:
             count = len(c.get("evidence", []))
             st.markdown(f"- {c['name']} ({count}/3 evidence)")
+
+    st.markdown("---")
+
+    if st.button("🔄 Start fresh"):
+        st.session_state.profile = {
+            "name": st.session_state.username,
+            "schemas_identified": [],
+            "schema_candidates": [],
+            "behavioral_patterns": [],
+            "core_needs": [],
+            "last_updated": str(date.today())
+        }
+        save_profile(st.session_state.profile)
+        st.session_state.messages = []
+        st.rerun()
+
+    if st.button("🚪 Change user"):
+        st.session_state.username = None
+        st.session_state.messages = []
+        if "profile" in st.session_state:
+            del st.session_state.profile
+        st.rerun()
 
     st.markdown("---")
     st.caption("2Human is a guide, not a therapist.")
@@ -155,7 +212,6 @@ if prompt := st.chat_input("How are you feeling right now?"):
     recent = st.session_state.messages[-MAX_HISTORY:]
     history_context = "\n".join([f"{m['role']}: {m['content']}" for m in recent])
 
-    # Semantic search — only for substantial messages
     book_context = ""
     if len(prompt) > 15:
         docs = db.similarity_search(prompt, k=5)
@@ -172,15 +228,13 @@ if prompt := st.chat_input("How are you feeling right now?"):
     profile_context = format_profile_for_prompt(st.session_state.profile)
     user_msg_count = len([m for m in st.session_state.messages if m["role"] == "user"])
 
-    # ─────────────────────────────────────────
-    # SYSTEM PROMPT
-    # ─────────────────────────────────────────
     system_prompt = f"""You are the 2Human Mentor — a conversational self-knowledge guide based on Schema Therapy (ST).
 
 IDENTITY:
 - You are a guide, NOT a therapist. Never diagnose, prescribe, or claim clinical certainty.
 - You are an experimental educational tool. Be transparent about this when relevant.
 - Always respond in English, regardless of the language the user writes in.
+- The user's name is {st.session_state.username} — use it naturally and sparingly.
 
 USER PROFILE (persistent memory — never ignore):
 {profile_context}
@@ -192,10 +246,11 @@ BEHAVIORAL RULES:
   what you noted and why — only when something genuinely new was identified.
 - ONE open question per message. Never send questionnaires or walls of text.
 - Be empathetic and direct. Depth without detours.
-- If the user expresses suicidal ideation, self-harm, or crisis, 
-  immediately shift to a supportive tone, provide crisis resources 
-  (CVV: 188 for Brazil, or local emergency services), and do NOT 
-  analyze or save the message as a schema data point.
+- Be patient and observational. Resist the urge to name or label too early.
+  Sit with ambiguity — a pattern only becomes meaningful when it repeats.
+- If the user expresses suicidal ideation, self-harm, or crisis: immediately shift to a
+  supportive tone, provide crisis resources (CVV: 188 for Brazil, or local emergency
+  services), and do NOT analyze or save the message as a schema data point.
 
 ONBOARDING (first 3 user messages only):
 - Naturally explain how you work: you observe patterns, save triggers and emotions,
@@ -227,9 +282,6 @@ SOURCE HIERARCHY (when sources conflict):
 Use the knowledge base only when the user's message relates to schemas or emotional patterns.
 Ignore it for greetings and short messages."""
 
-    # ─────────────────────────────────────────
-    # GEMINI CALL
-    # ─────────────────────────────────────────
     with st.chat_message("assistant"):
         try:
             contents = []
@@ -246,9 +298,7 @@ Ignore it for greetings and short messages."""
             st.write(reply)
             st.session_state.messages.append({"role": "assistant", "content": reply})
 
-            # ─────────────────────────────────────────
-            # SILENT PROFILE UPDATE (every 3 user messages)
-            # ─────────────────────────────────────────
+            # Silent profile update every 3 user messages
             user_msgs = [m for m in st.session_state.messages if m["role"] == "user"]
             if len(user_msgs) % 3 == 0:
                 update_prompt = f"""You are a clinical analysis system based on Schema Therapy.
@@ -286,7 +336,7 @@ Return ONLY the updated JSON. No extra text, no markdown, no backticks."""
                     st.session_state.profile = new_profile
                     save_profile(new_profile)
                 except Exception:
-                    pass  # Keep current profile if parsing fails
+                    pass
 
         except Exception as e:
             st.error("Could not get a response. Please try again in a moment.")
