@@ -401,4 +401,6 @@ Return ONLY the updated JSON. No extra text, no markdown, no backticks."""
                     pass
 
         except Exception as e:
-            st.error("Could not get a response. Please try again in a moment.")
+            lang = st.session_state.get("lang", "en")
+            msg = "Não foi possível obter resposta. Tente novamente." if lang == "pt" else "Could not get a response. Please try again."
+            st.error(f"{msg}\n\n`{type(e).__name__}: {e}`")
