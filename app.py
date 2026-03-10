@@ -47,31 +47,64 @@ if "lang" not in st.session_state:
     st.session_state.lang = None
 
 if st.session_state.username is None:
-    # Centered welcome screen
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         st.markdown("## 🧠 2Human")
-        st.markdown("*A self-knowledge guide based on Schema Therapy*")
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("Before we begin — how should I call you? / Como posso te chamar?")
-        name = st.text_input("", placeholder="Your first name / Seu nome", label_visibility="collapsed")
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("Choose your language / Escolha o idioma:")
-        col_en, col_pt = st.columns(2)
-        with col_en:
-            btn_en = st.button("🇺🇸 English", use_container_width=True)
-        with col_pt:
-            btn_pt = st.button("🇧🇷 Português", use_container_width=True)
-        if btn_en or btn_pt:
-            if name.strip():
-                st.session_state.username = name.strip()
-                st.session_state.lang = "en" if btn_en else "pt"
+
+        # STEP 1 — choose language first
+        if st.session_state.lang is None:
+            st.markdown("*A self-knowledge guide based on Schema Therapy*")
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("Choose your language / Escolha o idioma:")
+            col_en, col_pt = st.columns(2)
+            with col_en:
+                if st.button("🇺🇸 English", use_container_width=True):
+                    st.session_state.lang = "en"
+                    st.rerun()
+            with col_pt:
+                if st.button("🇧🇷 Português", use_container_width=True):
+                    st.session_state.lang = "pt"
+                    st.rerun()
+
+        # STEP 2 — name, already in chosen language
+        elif st.session_state.lang == "pt":
+            st.markdown("*Um guia de autoconhecimento baseado na Terapia do Esquema*")
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("Como posso te chamar?")
+            name = st.text_input("", placeholder="Seu primeiro nome", label_visibility="collapsed")
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Começar →", use_container_width=True):
+                if name.strip():
+                    st.session_state.username = name.strip()
+                    st.rerun()
+                else:
+                    st.warning("Por favor, insira seu nome para continuar.")
+            if st.button("← Voltar", use_container_width=True):
+                st.session_state.lang = None
                 st.rerun()
-            else:
-                st.warning("Please enter your name first. / Por favor, insira seu nome primeiro.")
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.caption("2Human is a guide, not a therapist. / 2Human é um guia, não um terapeuta.")
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.caption("2Human é um guia, não um terapeuta. Versão alpha experimental.")
+
+        else:
+            st.markdown("*A self-knowledge guide based on Schema Therapy*")
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("Before we begin — how should I call you?")
+            name = st.text_input("", placeholder="Your first name", label_visibility="collapsed")
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Begin →", use_container_width=True):
+                if name.strip():
+                    st.session_state.username = name.strip()
+                    st.rerun()
+                else:
+                    st.warning("Please enter your name to continue.")
+            if st.button("← Back", use_container_width=True):
+                st.session_state.lang = None
+                st.rerun()
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.caption("2Human is a guide, not a therapist. Experimental alpha.")
+
     st.stop()
 
 # ─────────────────────────────────────────
