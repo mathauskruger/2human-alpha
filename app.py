@@ -351,11 +351,20 @@ Ignore it for greetings and short messages."""
                 contents.append(f"Knowledge base references:\n{book_context}")
             contents.append(f"Recent conversation:\n{history_context}\n\nUser: {prompt}")
 
-            response = client.models.generate_content(
-                model="gemini-flash-latest",
-                contents=contents,
-                config={"system_instruction": system_prompt}
-            )
+            import time
+            for _attempt in range(3):
+                try:
+                    response = client.models.generate_content(
+                        model="gemini-2.0-flash",
+                        contents=contents,
+                        config={"system_instruction": system_prompt}
+                    )
+                    break
+                except Exception as _e:
+                    if "429" in str(_e) and _attempt < 2:
+                        time.sleep(10)
+                    else:
+                        raise
             reply = response.text
             st.write(reply)
             st.session_state.messages.append({"role": "assistant", "content": reply})
@@ -385,7 +394,7 @@ Return ONLY the updated JSON. No extra text, no markdown, no backticks."""
 
                 try:
                     profile_response = client.models.generate_content(
-                        model="gemini-flash-latest",
+                        model="gemini-2.0-flash",
                         contents=[update_prompt]
                     )
                     raw = profile_response.text.strip()
