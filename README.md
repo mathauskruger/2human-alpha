@@ -43,6 +43,47 @@ Max 5 active schemas at a time. Others become dormant — never deleted.
 
 ---
 
+## Longitudinal memory
+
+Most AI chatbots forget you the moment the session ends. 2Human doesn't.
+
+Each user has a persistent emotional profile stored as a JSON file, built and refined across every conversation. The agent carries this profile into every session — so it never asks the same question twice, and patterns become clearer over time.
+
+```json
+{
+  "name": "Mathaus",
+  "schemas_identified": [
+    {
+      "name": "Emotional Deprivation",
+      "intensity": 7,
+      "triggers": ["not being heard", "feeling invisible"],
+      "dormant": false
+    }
+  ],
+  "schema_candidates": [
+    {
+      "name": "Abandonment",
+      "evidence": ["fears being left out", "anxiety when ignored"]
+    }
+  ],
+  "behavioral_patterns": [
+    {
+      "trigger": "conflict at work",
+      "emotion": "shame",
+      "behavior": "withdraws and goes silent"
+    }
+  ],
+  "core_needs": ["emotional validation", "stable connection"],
+  "last_updated": "2026-03-10"
+}
+```
+
+The profile updates silently every 3 messages — the user never sees a form or questionnaire. The agent observes, infers, and saves. When something new is identified, it briefly explains what it noted and why, in italics, inline in the conversation.
+
+This is what makes 2Human a longitudinal tool rather than a single-session chatbot: the longer someone uses it, the more accurate and personal the reflection becomes.
+
+---
+
 ## Knowledge base
 
 The agent's responses are grounded in indexed clinical sources via RAG (FAISS + sentence-transformers):
@@ -129,6 +170,7 @@ streamlit run app.py
 - [x] Bilingual (EN / PT)
 - [x] Crisis / suicide ideation detection → redirect to CVV (188)
 - [ ] Remote profile storage (Supabase)
+- [ ] Neuropsychological screening agent (gifted assessment)
 
 ---
 
