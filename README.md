@@ -170,7 +170,6 @@ streamlit run app.py
 - [x] Bilingual (EN / PT)
 - [x] Crisis / suicide ideation detection → redirect to CVV (188)
 - [ ] Remote profile storage (Supabase)
-- [ ] Neuropsychological screening agent (gifted assessment)
 
 ---
 
