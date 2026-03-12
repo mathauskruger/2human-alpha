@@ -355,7 +355,7 @@ Ignore it for greetings and short messages."""
             for _attempt in range(3):
                 try:
                     response = client.models.generate_content(
-                        model="gemini-1.5-flash",
+                        model="gemini-2.0-flash-lite",
                         contents=contents,
                         config={"system_instruction": system_prompt}
                     )
@@ -394,7 +394,7 @@ Return ONLY the updated JSON. No extra text, no markdown, no backticks."""
 
                 try:
                     profile_response = client.models.generate_content(
-                        model="gemini-1.5-flash",
+                        model="gemini-2.0-flash-lite",
                         contents=[update_prompt]
                     )
                     raw = profile_response.text.strip()
