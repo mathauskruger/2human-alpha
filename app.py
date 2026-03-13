@@ -138,16 +138,18 @@ def save_profile(profile):
 def format_profile_for_prompt(profile):
     lines = []
 
-    active = [s for s in profile.get("schemas_identified", []) if not s.get("dormant", False)]
+    active = [s for s in profile.get("schemas_identified", []) if isinstance(s, dict) and not s.get("dormant", False)]
     if active:
         lines.append("Identified schemas (active):")
         for s in active:
+            if not s.get("name"):
+                continue
             triggers = ", ".join(s.get("triggers", [])) or "not yet mapped"
-            lines.append(f"  - {s['name']} (intensity {s['intensity']}/10) | triggers: {triggers}")
+            lines.append(f"  - {s['name']} (intensity {s.get('intensity','?')}/10) | triggers: {triggers}")
     else:
         lines.append("Identified schemas: none yet.")
 
-    candidates = profile.get("schema_candidates", [])
+    candidates = [c for c in profile.get("schema_candidates", []) if isinstance(c, dict) and c.get("name")]
     if candidates:
         lines.append("Schema candidates (under observation):")
         for c in candidates:
@@ -205,7 +207,7 @@ st.markdown("---")
 # ─────────────────────────────────────────
 with st.sidebar:
     st.markdown(f"### 👤 {st.session_state.username}")
-    st.markdown("✅ Knowledge base loaded!")
+    st.markdown("✅ " + ("Base de conhecimento carregada!" if st.session_state.get("lang") == "pt" else "Knowledge base loaded!"))
     st.markdown("---")
     _pt = st.session_state.get("lang") == "pt"
 
@@ -250,7 +252,7 @@ with st.sidebar:
             "last_updated": str(date.today())
         }
         save_profile(st.session_state.profile)
-        st.session_state.messages = []
+        del st.session_state["messages"]
         st.rerun()
 
     if st.button(btn_change):
@@ -262,7 +264,9 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.caption("2Human is a guide, not a therapist." if not _pt else "2Human é um guia, não um terapeuta.")
+    with st.expander("🔍 Ver perfil salvo" if _pt else "🔍 Inspect saved profile"):
+        st.json(st.session_state.profile)
+    st.caption("2Human é um guia, não um terapeuta." if _pt else "2Human is a guide, not a therapist.")
 
 # ─────────────────────────────────────────
 # RENDER CHAT HISTORY
@@ -420,11 +424,14 @@ Return ONLY the updated JSON. No extra text, no markdown, no backticks."""
                         if raw.startswith("json"):
                             raw = raw[4:]
                     new_profile = json.loads(raw)
-                    new_profile["last_updated"] = str(date.today())
-                    st.session_state.profile = new_profile
-                    save_profile(new_profile)
-                except Exception:
-                    pass
+                    # Validar estrutura mínima antes de salvar
+                    required_keys = {"name", "schemas_identified", "schema_candidates", "behavioral_patterns", "core_needs"}
+                    if required_keys.issubset(new_profile.keys()):
+                        new_profile["last_updated"] = str(date.today())
+                        st.session_state.profile = new_profile
+                        save_profile(new_profile)
+                except Exception as _profile_err:
+                    st.sidebar.warning(f"⚠️ Profile update failed: `{type(_profile_err).__name__}`")
 
         except Exception as e:
             lang = st.session_state.get("lang", "en")
