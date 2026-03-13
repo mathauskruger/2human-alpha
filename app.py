@@ -256,11 +256,9 @@ with st.sidebar:
         st.rerun()
 
     if st.button(btn_change):
-        st.session_state.username = None
-        st.session_state.lang = None
-        st.session_state.messages = []
-        if "profile" in st.session_state:
-            del st.session_state.profile
+        for _k in ["username", "lang", "messages", "profile"]:
+            if _k in st.session_state:
+                del st.session_state[_k]
         st.rerun()
 
     st.markdown("---")
@@ -333,13 +331,14 @@ BEHAVIORAL RULES:
   supportive tone, provide crisis resources (CVV: 188 for Brazil, or local emergency
   services), and do NOT analyze or save the message as a schema data point.
 
-ONBOARDING — MANDATORY for first 3 user messages:
-- This is message number {user_msg_count} from the user.
-- If {user_msg_count} <= 3: you MUST include a brief explanation of how you work in your reply.
-  Explain naturally, woven into your response — not as a separate paragraph.
-  Tell the user: you observe emotional patterns across conversations, you save triggers and
-  recurring emotions, and you need multiple instances of a pattern before naming a schema.
-- If {user_msg_count} > 3: do NOT explain your process unless you are saving new data.
+ONBOARDING — STRICT RULES:
+- Current user message number: {user_msg_count}
+- If {user_msg_count} == 1: after your first response, add ONE separate short sentence
+  explaining you will quietly observe patterns over time. Nothing more.
+- If {user_msg_count} == 2 or 3: do NOT explain your process again unless saving new data.
+- If {user_msg_count} > 3: NEVER explain your process unless you are saving new data.
+- Process explanations go in italics on a NEW LINE, AFTER your main response and question.
+- NEVER mix the process explanation with your question or main response.
 
 RESPONSE FORMAT when saving new data:
   1. Warmly acknowledge the user's message (1-3 sentences).
@@ -426,6 +425,15 @@ Return ONLY the updated JSON. No extra text, no markdown, no backticks."""
                         if raw.startswith("json"):
                             raw = raw[4:]
                     new_profile = json.loads(raw)
+                    # Normalizar campos alternativos que o modelo pode usar
+                    for _c in new_profile.get("schema_candidates", []):
+                        if isinstance(_c, dict) and "schema" in _c and "name" not in _c:
+                            _c["name"] = _c.pop("schema")
+                        if isinstance(_c, dict) and "evidences" in _c and "evidence" not in _c:
+                            _c["evidence"] = _c.pop("evidences")
+                    for _s in new_profile.get("schemas_identified", []):
+                        if isinstance(_s, dict) and "schema" in _s and "name" not in _s:
+                            _s["name"] = _s.pop("schema")
                     # Validar estrutura mínima antes de salvar
                     required_keys = {"name", "schemas_identified", "schema_candidates", "behavioral_patterns", "core_needs"}
                     if required_keys.issubset(new_profile.keys()):
