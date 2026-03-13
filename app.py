@@ -20,13 +20,7 @@ client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=api_key,
 )
-
-MODELS = {
-    "🦙 Llama 3.3 70B (free)": "meta-llama/llama-3.3-70b-instruct:free",
-    "🦙 Llama 3.1 8B (free)": "meta-llama/llama-3.1-8b-instruct:free",
-    "💎 DeepSeek R1 (free)": "deepseek/deepseek-r1:free",
-    "🔵 GPT-4o Mini (pago)": "openai/gpt-4o-mini",
-}
+MODEL = "openai/gpt-4o-mini"
 
 # ─────────────────────────────────────────
 # VECTOR STORE (loads once)
@@ -213,15 +207,6 @@ with st.sidebar:
     st.markdown(f"### 👤 {st.session_state.username}")
     st.markdown("✅ Knowledge base loaded!")
     st.markdown("---")
-    st.markdown("### 🤖 Model")
-    selected_model_label = st.selectbox(
-        "",
-        options=list(MODELS.keys()),
-        label_visibility="collapsed"
-    )
-    st.caption(f"`{MODELS[selected_model_label]}`")
-    st.markdown("---")
-
     _pt = st.session_state.get("lang") == "pt"
 
     st.markdown("### 🗂️ " + ("Seu perfil" if _pt else "Your profile"))
@@ -381,11 +366,10 @@ Ignore it for greetings and short messages."""
                 contents.append(f"Knowledge base references:\n{book_context}")
             contents.append(f"Recent conversation:\n{history_context}\n\nUser: {prompt}")
 
-            model_id = MODELS[selected_model_label]
             for _attempt in range(3):
                 try:
                     response = client.chat.completions.create(
-                        model=model_id,
+                        model=MODEL,
                         messages=[
                             {"role": "system", "content": system_prompt},
                             *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[-10:]],
@@ -427,7 +411,7 @@ Return ONLY the updated JSON. No extra text, no markdown, no backticks."""
 
                 try:
                     profile_response = client.chat.completions.create(
-                        model=model_id,
+                        model=MODEL,
                         messages=[{"role": "user", "content": update_prompt}]
                     )
                     raw = profile_response.choices[0].message.content.strip()
