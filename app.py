@@ -1,9 +1,10 @@
 import streamlit as st
-from google import genai
+from openai import OpenAI
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 import os
 import json
+import time
 from datetime import date
 
 # ─────────────────────────────────────────
@@ -12,10 +13,20 @@ from datetime import date
 st.set_page_config(page_title="2Human Alpha", page_icon="🧠")
 
 # ─────────────────────────────────────────
-# GEMINI CLIENT
+# OPENROUTER CLIENT
 # ─────────────────────────────────────────
-api_key = st.secrets["GEMINI_API_KEY"]
-client = genai.Client(api_key=api_key)
+api_key = st.secrets["OPENROUTER_API_KEY"]
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=api_key,
+)
+
+MODELS = {
+    "⚡ Gemini 2.0 Flash (free)": "google/gemini-2.0-flash-exp:free",
+    "🦙 Llama 3.1 8B (free)": "meta-llama/llama-3.1-8b-instruct:free",
+    "🔵 GPT-4o Mini": "openai/gpt-4o-mini",
+    "🟠 Gemini Flash 1.5": "google/gemini-flash-1.5",
+}
 
 # ─────────────────────────────────────────
 # VECTOR STORE (loads once)
@@ -202,6 +213,14 @@ with st.sidebar:
     st.markdown(f"### 👤 {st.session_state.username}")
     st.markdown("✅ Knowledge base loaded!")
     st.markdown("---")
+    st.markdown("### 🤖 Model")
+    selected_model_label = st.selectbox(
+        "",
+        options=list(MODELS.keys()),
+        label_visibility="collapsed"
+    )
+    st.caption(f"`{MODELS[selected_model_label]}`")
+    st.markdown("---")
     st.markdown("### 🗂️ Your profile")
 
     active_schemas = [
@@ -351,13 +370,16 @@ Ignore it for greetings and short messages."""
                 contents.append(f"Knowledge base references:\n{book_context}")
             contents.append(f"Recent conversation:\n{history_context}\n\nUser: {prompt}")
 
-            import time
+            model_id = MODELS[selected_model_label]
             for _attempt in range(3):
                 try:
-                    response = client.models.generate_content(
-                        model="gemini-2.0-flash-lite",
-                        contents=contents,
-                        config={"system_instruction": system_prompt}
+                    response = client.chat.completions.create(
+                        model=model_id,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[-10:]],
+                            {"role": "user", "content": "\n\n".join(contents)},
+                        ]
                     )
                     break
                 except Exception as _e:
@@ -365,7 +387,7 @@ Ignore it for greetings and short messages."""
                         time.sleep(10)
                     else:
                         raise
-            reply = response.text
+            reply = response.choices[0].message.content
             st.write(reply)
             st.session_state.messages.append({"role": "assistant", "content": reply})
 
@@ -393,11 +415,11 @@ Rules:
 Return ONLY the updated JSON. No extra text, no markdown, no backticks."""
 
                 try:
-                    profile_response = client.models.generate_content(
-                        model="gemini-2.0-flash-lite",
-                        contents=[update_prompt]
+                    profile_response = client.chat.completions.create(
+                        model=model_id,
+                        messages=[{"role": "user", "content": update_prompt}]
                     )
-                    raw = profile_response.text.strip()
+                    raw = profile_response.choices[0].message.content.strip()
                     if raw.startswith("```"):
                         raw = raw.split("```")[1]
                         if raw.startswith("json"):

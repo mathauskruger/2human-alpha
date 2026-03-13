@@ -1,6 +1,5 @@
 streamlit
-google-genai
-google-generativeai
+openai
 langchain-community
 langchain-text-splitters
 langchain-huggingface
