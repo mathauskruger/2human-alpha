@@ -221,30 +221,41 @@ with st.sidebar:
     )
     st.caption(f"`{MODELS[selected_model_label]}`")
     st.markdown("---")
-    st.markdown("### 🗂️ Your profile")
+
+    _pt = st.session_state.get("lang") == "pt"
+
+    st.markdown("### 🗂️ " + ("Seu perfil" if _pt else "Your profile"))
 
     active_schemas = [
         s for s in st.session_state.profile.get("schemas_identified", [])
         if not s.get("dormant", False)
     ]
-    candidates = st.session_state.profile.get("schema_candidates", [])
+    candidates = [
+        c for c in st.session_state.profile.get("schema_candidates", [])
+        if isinstance(c, dict) and c.get("name")
+    ]
 
     if active_schemas:
-        st.markdown("**Identified schemas:**")
+        st.markdown("**" + ("Esquemas identificados:" if _pt else "Identified schemas:") + "**")
         for s in active_schemas:
-            st.markdown(f"- {s['name']} — {s['intensity']}/10")
+            if isinstance(s, dict) and s.get("name"):
+                st.markdown(f"- {s['name']} — {s.get('intensity', '?')}/10")
     else:
-        st.markdown("*No schemas identified yet*")
+        st.markdown("*" + ("Nenhum esquema identificado ainda" if _pt else "No schemas identified yet") + "*")
 
     if candidates:
-        st.markdown("**Under observation:**")
+        st.markdown("**" + ("Em observação:" if _pt else "Under observation:") + "**")
         for c in candidates:
             count = len(c.get("evidence", []))
-            st.markdown(f"- {c['name']} ({count}/3 evidence)")
+            label = "evidências" if _pt else "evidence"
+            st.markdown(f"- {c['name']} ({count}/3 {label})")
 
     st.markdown("---")
 
-    if st.button("🔄 Start fresh"):
+    btn_fresh = "🔄 Recomeçar" if _pt else "🔄 Start fresh"
+    btn_change = "🚪 Trocar usuário" if _pt else "🚪 Change user"
+
+    if st.button(btn_fresh):
         st.session_state.profile = {
             "name": st.session_state.username,
             "schemas_identified": [],
@@ -257,7 +268,7 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-    if st.button("🚪 Change user"):
+    if st.button(btn_change):
         st.session_state.username = None
         st.session_state.lang = None
         st.session_state.messages = []
@@ -266,7 +277,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.caption("2Human is a guide, not a therapist." if st.session_state.get("lang") == "en" else "2Human é um guia, não um terapeuta.")
+    st.caption("2Human is a guide, not a therapist." if not _pt else "2Human é um guia, não um terapeuta.")
 
 # ─────────────────────────────────────────
 # RENDER CHAT HISTORY
