@@ -22,10 +22,10 @@ client = OpenAI(
 )
 
 MODELS = {
-    "⚡ Gemini 2.0 Flash (free)": "google/gemini-2.0-flash-exp:free",
+    "🦙 Llama 3.3 70B (free)": "meta-llama/llama-3.3-70b-instruct:free",
     "🦙 Llama 3.1 8B (free)": "meta-llama/llama-3.1-8b-instruct:free",
-    "🔵 GPT-4o Mini": "openai/gpt-4o-mini",
-    "🟠 Gemini Flash 1.5": "google/gemini-flash-1.5",
+    "💎 DeepSeek R1 (free)": "deepseek/deepseek-r1:free",
+    "🔵 GPT-4o Mini (pago)": "openai/gpt-4o-mini",
 }
 
 # ─────────────────────────────────────────
