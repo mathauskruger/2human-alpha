@@ -321,12 +321,11 @@ USER PROFILE (persistent memory — never ignore):
 BEHAVIORAL RULES:
 - Use the profile to maintain continuity. Never restart from scratch each message.
 - When the user mentions something activating a known schema or candidate, name it naturally.
-- When you save NEW data (new trigger, pattern, or candidate), briefly explain in italics
-  what you noted and why — only when something genuinely new was identified.
 - ONE open question per message. Never send questionnaires or walls of text.
 - Be empathetic and direct. Depth without detours.
 - Be patient and observational. Resist the urge to name or label too early.
   Sit with ambiguity — a pattern only becomes meaningful when it repeats.
+- Do NOT add italic notes or process explanations unless the ONBOARDING rules below require it.
 - If the user expresses suicidal ideation, self-harm, or crisis: immediately shift to a
   supportive tone, provide crisis resources (CVV: 188 for Brazil, or local emergency
   services), and do NOT analyze or save the message as a schema data point.
@@ -339,12 +338,6 @@ ONBOARDING — STRICT RULES:
 - If {user_msg_count} > 3: NEVER explain your process unless you are saving new data.
 - Process explanations go in italics on a NEW LINE, AFTER your main response and question.
 - NEVER mix the process explanation with your question or main response.
-
-RESPONSE FORMAT when saving new data:
-  1. Warmly acknowledge the user's message (1-3 sentences).
-  2. New line in italics: briefly explain what you just saved.
-  Example: *I noted 'not being invited' as a trigger and 'they don't like me' as the
-  associated feeling. I'll need a few more similar patterns before naming a schema.*
 
 SOURCE RULES:
 - Your knowledge base belongs to YOU, not the user.
@@ -437,9 +430,27 @@ Return ONLY the updated JSON. No extra text, no markdown, no backticks."""
                     # Validar estrutura mínima antes de salvar
                     required_keys = {"name", "schemas_identified", "schema_candidates", "behavioral_patterns", "core_needs"}
                     if required_keys.issubset(new_profile.keys()):
+                        old_candidates = {c.get("name") for c in st.session_state.profile.get("schema_candidates", []) if isinstance(c, dict)}
+                        old_schemas = {s.get("name") for s in st.session_state.profile.get("schemas_identified", []) if isinstance(s, dict)}
                         new_profile["last_updated"] = str(date.today())
                         st.session_state.profile = new_profile
                         save_profile(new_profile)
+                        # Detectar mudanças e notificar o usuário
+                        new_candidates = {c.get("name") for c in new_profile.get("schema_candidates", []) if isinstance(c, dict)}
+                        new_schemas = {s.get("name") for s in new_profile.get("schemas_identified", []) if isinstance(s, dict)}
+                        added_candidates = new_candidates - old_candidates
+                        added_schemas = new_schemas - old_schemas
+                        _pt = st.session_state.get("lang") == "pt"
+                        if added_schemas:
+                            for _s in added_schemas:
+                                note = f"*{'Identifiquei um padrão chamado' if _pt else 'I identified a pattern called'} **{_s}**.*"
+                                st.session_state.messages.append({"role": "assistant", "content": note})
+                                st.chat_message("assistant").write(note)
+                        elif added_candidates:
+                            for _c in added_candidates:
+                                note = f"*{'Comecei a observar um padrão que chamei de' if _pt else 'I started tracking a pattern called'} **{_c}**. {'Preciso de mais evidências antes de confirmar.' if _pt else 'I need more evidence before naming it.'}*"
+                                st.session_state.messages.append({"role": "assistant", "content": note})
+                                st.chat_message("assistant").write(note)
                 except Exception as _profile_err:
                     st.sidebar.warning(f"⚠️ Profile update failed: `{type(_profile_err).__name__}`")
 
